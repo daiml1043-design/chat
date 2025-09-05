@@ -1,111 +1,260 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Private Chat App</title>
+    <title>Private Chat with PIN</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial; display: flex; margin: 0; height: 100vh; }
-        #users { width: 200px; border-right: 1px solid #ccc; padding: 10px; overflow-y: auto; }
-        #chat { flex: 1; padding: 10px; display: flex; flex-direction: column; }
-        #messages { flex: 1; overflow-y: auto; list-style: none; padding: 0; margin: 0; }
-        #messages li { padding: 5px 10px; border-bottom: 1px solid #eee; }
-        #form { display: flex; margin-top: 10px; }
-        #input { flex: 1; padding: 10px; }
-        #send { padding: 10px; }
-        .user { cursor: pointer; padding: 5px; border-bottom: 1px solid #eee; }
-        .user:hover { background: #f0f0f0; }
+        body { font-family: Arial; margin:0; padding:0; height:100vh; display:flex; justify-content:center; align-items:center; background:#f0f0f0; }
+        .screen { width: 100%; max-width: 500px; background: #fff; padding: 20px; border-radius:10px; box-shadow: 0 0 10px rgba(0,0,0,0.2); display: none; flex-direction: column; }
+        input, button { width: 100%; padding: 10px; margin:5px 0; font-size:16px; }
+        #messages { list-style:none; padding:0; max-height:300px; overflow-y:auto; margin-bottom:10px; display:flex; flex-direction:column; }
+        #messages li { padding:5px; border-radius:5px; margin-bottom:5px; max-width:70%; word-wrap:break-word; }
+        #messages li.self { background:#d1ffd6; align-self:flex-end; }
+        #messages li.other { background:#eee; align-self:flex-start; }
+        #form { display:flex; }
+        #input { flex:1; }
+        #send { width:80px; }
+        #userList { list-style:none; padding:0; max-height:100px; overflow-y:auto; margin-bottom:10px; }
+        .user { cursor:pointer; padding:5px; border-bottom:1px solid #eee; }
+        .user:hover { background:#f0f0f0; }
+        .typing { font-size:12px; color:gray; margin-bottom:5px; }
+        .error { color:red; }
     </style>
 </head>
 <body>
-    <div id="users">
-        <h3>Users</h3>
-        <ul id="userList"></ul>
-    </div>
-    <div id="chat">
-        <ul id="messages"></ul>
-        <form id="form">
-            <input id="input" autocomplete="off" placeholder="Type a message..." />
-            <button id="send">Send</button>
-        </form>
-    </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js"></script>
-    <script>
-        // Firebase config
-        const firebaseConfig = {
-          apiKey: "AIzaSyDGdH6XkMXh6pfqgsUx83L-mj8gdHNES90",
-          authDomain: "application-b9db7.firebaseapp.com",
-          databaseURL: "https://application-b9db7-default-rtdb.firebaseio.com",
-          projectId: "application-b9db7",
-          storageBucket: "application-b9db7.firebasestorage.app",
-          messagingSenderId: "599892319079",
-          appId: "1:599892319079:web:0741a03df8ab21633b2dc2",
-          measurementId: "G-ZQ6749L2HJ"
-        };
+<div id="pinScreen" class="screen" style="display:flex;">
+    <h2>Enter Gate Pass PIN</h2>
+    <input type="password" id="pinInput" placeholder="Enter PIN">
+    <button id="pinBtn">Submit</button>
+    <p id="pinError" class="error"></p>
+</div>
 
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+<div id="loginScreen" class="screen">
+    <h2>Login / Create Account</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <button id="signupBtn">Create New Account</button>
+    <p id="loginError" class="error"></p>
+</div>
 
-        const usersRef = db.ref('users');
-        const chatsRef = db.ref('private_chats');
+<div id="chatScreen" class="screen">
+    <button id="logoutBtn" style="margin-bottom:10px;">Logout</button>
+    <h3>Users</h3>
+    <ul id="userList"></ul>
+    <ul id="messages"></ul>
+    <div id="typingIndicator" class="typing"></div>
+    <form id="form">
+        <input id="input" autocomplete="off" placeholder="Type a message..." />
+        <button id="send">Send</button>
+    </form>
+</div>
 
-        let currentUser = { username: prompt("Enter your name:") || "Anonymous" };
-        let currentUserId = usersRef.push().key;
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database.js"></script>
 
-        // Add current user
-        usersRef.child(currentUserId).set({ username: currentUser.username });
-        usersRef.child(currentUserId).onDisconnect().remove();
+<script>
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyDGdH6XkMXh6pfqgsUx83L-mj8gdHNES90",
+  authDomain: "application-b9db7.firebaseapp.com",
+  databaseURL: "https://application-b9db7-default-rtdb.firebaseio.com",
+  projectId: "application-b9db7",
+  storageBucket: "application-b9db7.firebasestorage.app",
+  messagingSenderId: "599892319079",
+  appId: "1:599892319079:web:0741a03df8ab21633b2dc2",
+  measurementId: "G-ZQ6749L2HJ"
+};
 
-        const userList = document.getElementById('userList');
-        const messages = document.getElementById('messages');
-        const form = document.getElementById('form');
-        const input = document.getElementById('input');
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const PIN = "9066632039";
 
-        let activeChatId = null;
+// Screens
+const pinScreen = document.getElementById('pinScreen');
+const loginScreen = document.getElementById('loginScreen');
+const chatScreen = document.getElementById('chatScreen');
 
-        // Show users
-        usersRef.on('value', snapshot => {
-            userList.innerHTML = '';
-            const users = snapshot.val();
-            for (let id in users) {
-                if (id === currentUserId) continue;
-                const li = document.createElement('li');
-                li.textContent = users[id].username;
-                li.classList.add('user');
-                li.onclick = () => selectUser(id, users[id].username);
-                userList.appendChild(li);
-            }
-        });
+// PIN
+const pinInput = document.getElementById('pinInput');
+const pinBtn = document.getElementById('pinBtn');
+const pinError = document.getElementById('pinError');
 
-        function selectUser(otherUserId, otherUsername) {
-            messages.innerHTML = '';
-            activeChatId = [currentUserId, otherUserId].sort().join('_');
-            const chatRef = chatsRef.child(activeChatId).child('messages');
-            chatRef.off();
-            chatRef.on('child_added', snapshot => {
-                const msg = snapshot.val();
-                const li = document.createElement('li');
-                li.textContent = `${msg.senderName}: ${msg.text}`;
-                messages.appendChild(li);
-                messages.scrollTop = messages.scrollHeight;
-            });
+// Login
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const signupBtn = document.getElementById('signupBtn');
+const loginError = document.getElementById('loginError');
+
+// Chat
+const messages = document.getElementById('messages');
+const userList = document.getElementById('userList');
+const typingIndicator = document.getElementById('typingIndicator');
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+const logoutBtn = document.getElementById('logoutBtn');
+
+let currentUser = null;
+let currentUserId = null;
+let activeChatId = null;
+let activeChatRef = null;
+let typingRef = null;
+let typingTimeout;
+
+const usersRef = db.ref('users');
+const chatsRef = db.ref('private_chats');
+
+// Check localStorage for saved user
+window.onload = () => {
+    const savedUser = JSON.parse(localStorage.getItem('chatUser'));
+    if(savedUser && savedUser.userId && savedUser.username){
+        pinScreen.style.display='none';
+        loginScreen.style.display='none';
+        currentUser = {username: savedUser.username, color: savedUser.color};
+        currentUserId = savedUser.userId;
+        chatScreen.style.display='flex';
+        startChat();
+    } else {
+        pinScreen.style.display='flex';
+    }
+};
+
+// PIN submission
+pinBtn.onclick = () => {
+    if(pinInput.value === PIN){
+        pinScreen.style.display='none';
+        loginScreen.style.display='flex';
+    }else{
+        pinError.textContent="Invalid PIN!";
+    }
+};
+
+// Save user to localStorage
+function saveUserLocally(){
+    localStorage.setItem('chatUser', JSON.stringify({
+        userId: currentUserId,
+        username: currentUser.username,
+        color: currentUser.color
+    }));
+}
+
+// Login
+loginBtn.onclick = () => {
+    const uname = usernameInput.value.trim();
+    const pwd = passwordInput.value.trim();
+    if(!uname || !pwd){ loginError.textContent="Enter username & password"; return; }
+    usersRef.orderByChild('username').equalTo(uname).once('value', snap=>{
+        if(snap.exists()){
+            const data = snap.val();
+            const key = Object.keys(data)[0];
+            if(data[key].password===pwd){
+                currentUser = {username: uname, color: data[key].color};
+                currentUserId = key;
+                saveUserLocally();
+                startChat();
+            }else loginError.textContent="Incorrect password";
+        }else loginError.textContent="User not found";
+    });
+};
+
+// Signup
+signupBtn.onclick = () => {
+    const uname = usernameInput.value.trim();
+    const pwd = passwordInput.value.trim();
+    if(!uname || !pwd){ loginError.textContent="Enter username & password"; return; }
+    usersRef.orderByChild('username').equalTo(uname).once('value', snap=>{
+        if(snap.exists()){ loginError.textContent="Username taken"; return; }
+        const color = '#'+Math.floor(Math.random()*16777215).toString(16);
+        currentUserId = usersRef.push().key;
+        usersRef.child(currentUserId).set({username: uname, password: pwd, color: color});
+        currentUser = {username: uname, color: color};
+        saveUserLocally();
+        startChat();
+    });
+};
+
+// Logout
+logoutBtn.onclick = () => {
+    localStorage.removeItem('chatUser');
+    currentUser = null;
+    currentUserId = null;
+    activeChatId = null;
+    messages.innerHTML='';
+    userList.innerHTML='';
+    chatScreen.style.display='none';
+    pinScreen.style.display='flex';
+    usernameInput.value='';
+    passwordInput.value='';
+};
+
+// Start Chat
+function startChat(){
+    loginScreen.style.display='none';
+    chatScreen.style.display='flex';
+
+    usersRef.on('value', snap=>{
+        userList.innerHTML='';
+        const users = snap.val();
+        for(let id in users){
+            if(id===currentUserId) continue;
+            const li = document.createElement('li');
+            li.textContent = users[id].username;
+            li.classList.add('user');
+            li.onclick = ()=>selectUser(id, users[id]);
+            userList.appendChild(li);
         }
+    });
 
-        // Send message
-        form.addEventListener('submit', e => {
-            e.preventDefault();
-            if (!input.value.trim() || !activeChatId) return;
-            const chatRef = chatsRef.child(activeChatId).child('messages');
-            chatRef.push({
-                senderId: currentUserId,
-                senderName: currentUser.username,
-                text: input.value,
-                timestamp: Date.now()
-            });
-            input.value = '';
+    form.addEventListener('submit', e=>{
+        e.preventDefault();
+        if(!input.value.trim() || !activeChatId) return;
+        activeChatRef.push({
+            senderId: currentUserId,
+            senderName: currentUser.username,
+            senderColor: currentUser.color,
+            text: input.value,
+            timestamp: Date.now()
         });
-    </script>
+        input.value='';
+        typingRef.set(null);
+    });
+
+    input.addEventListener('input', ()=>{
+        if(!activeChatId) return;
+        typingRef.set(currentUserId);
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(()=>typingRef.set(null),1000);
+    });
+}
+
+// Select private chat
+function selectUser(otherUserId, otherUser){
+    messages.innerHTML='';
+    typingIndicator.textContent='';
+    activeChatId = [currentUserId, otherUserId].sort().join('_');
+    activeChatRef = chatsRef.child(activeChatId).child('messages');
+    typingRef = chatsRef.child(activeChatId).child('typing');
+
+    activeChatRef.off();
+    activeChatRef.on('child_added', snap=>{
+        const msg = snap.val();
+        const li = document.createElement('li');
+        li.textContent = `${msg.senderName}: ${msg.text}`;
+        li.classList.add(msg.senderId===currentUserId?'self':'other');
+        messages.appendChild(li);
+        messages.scrollTop = messages.scrollHeight;
+    });
+
+    typingRef.off();
+    typingRef.on('value', snap=>{
+        const data = snap.val();
+        typingIndicator.textContent = (data && data!==currentUserId)?`${otherUser.username} is typing...`:'';
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(()=>typingIndicator.textContent='',2000);
+    });
+}
+</script>
 </body>
 </html>
